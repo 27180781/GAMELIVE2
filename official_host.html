@@ -5,125 +5,32 @@
   <title>ממשק מפעיל רשמי</title>
   <link rel="stylesheet" href="styles.css">
   <script src="config.js"></script>
-  <style>
-    #video-container { display: flex; width: 100%; height: calc(100vh - 60px); }
-    #mergeCanvas { display: none; }
-    #local-screen { flex: 3; background: #000; }
-    #local-camera { flex: 1; background: #111; }
-    #local-screen video, #local-camera video { width: 100%; height: 100%; object-fit: contain; }
-  </style>
 </head>
 <body>
-  <h1 style="text-align:center; margin:10px 0;">ממשק מפעיל רשמי</h1>
-  <div id="controls" style="text-align:center; margin-bottom:10px;">
-    <button id="join-btn">הצטרף כמפעיל רשמי</button>
-    <button id="share-screen-btn" disabled>שתף מסך</button>
-    <button id="toggle-camera-btn" disabled>כבה/הפעל מצלמה</button>
-    <button id="toggle-mic-btn" disabled>כבה/הפעל מיקרופון</button>
-  </div>
-  <div id="video-container">
-    <div id="local-screen"></div>
-    <div id="local-camera"></div>
-    <canvas id="mergeCanvas"></canvas>
-    <video id="screenVideo" muted playsinline style="display:none;"></video>
-    <video id="cameraVideo" muted playsinline style="display:none;"></video>
-  </div>
+  <h1>ממשק מפעיל רשמי</h1>
+  <button id="join-btn">הצטרף כמצלמה ומיקרופון</button>
+  <div id="local-camera" style="width:100%; height:calc(100vh - 50px); background:#000;"></div>
 
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.14.0.js"></script>
   <script>
-    const client        = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-    const urlParams     = new URLSearchParams(location.search);
-    const CHANNEL_NAME  = urlParams.get('channel');
-    const UID           = Number(urlParams.get('uid'));
-
-    let localTracks = { micTrack: null, screenTrack: null, screenAudioTrack: null };
-    let joined = false;
-    let mergedTrack = null;
-    let mergeInterval = null;
+    const client    = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    const params    = new URLSearchParams(location.search);
+    const CHANNEL   = params.get('channel');
+    const UID       = Number(params.get('uid'));
+    let micTrack, cameraTrack;
 
     document.getElementById('join-btn').onclick = async () => {
-      if (joined) return;
-      await client.join(AGORA_APP_ID, CHANNEL_NAME, AGORA_TOKEN, UID);
-      // יצירת מיקרופון
-      localTracks.micTrack = (await AgoraRTC.createMicrophoneAndCameraTracks())[0];
-      await client.publish(localTracks.micTrack);
-      // הצגת תחילת וידאו (מצלמה ריקה)
-      document.getElementById('local-camera').innerHTML = '';
-      localTracks.micTrack.play();
-      joined = true;
-      document.getElementById('share-screen-btn').disabled    = false;
-      document.getElementById('toggle-camera-btn').disabled   = false;
-      document.getElementById('toggle-mic-btn').disabled      = false;
-    };
+      // הצטרפות לערוץ
+      await client.join(AGORA_APP_ID, CHANNEL, AGORA_TOKEN, UID);
 
-    // שיתוף מסך ויצירת merged video + שני audio
-    document.getElementById('share-screen-btn').onclick = async () => {
-      const btn = document.getElementById('share-screen-btn');
-      const screenVid = document.getElementById('screenVideo');
-      const camVid    = document.getElementById('cameraVideo');
-      const canvas    = document.getElementById('mergeCanvas');
-      const ctx       = canvas.getContext('2d');
+      // יצירת מיקרופון + מצלמה
+      [micTrack, cameraTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
 
-      if (!localTracks.screenTrack) {
-        // יצירת מסך ותצוגת וידאו מוסתרת
-        localTracks.screenTrack      = await AgoraRTC.createScreenVideoTrack();
-        localTracks.screenAudioTrack = await AgoraRTC.createScreenAudioTrack();
-        screenVid.srcObject = new MediaStream([ localTracks.screenTrack.getMediaStreamTrack() ]);
-        camVid.srcObject    = new MediaStream([ localTracks.micTrack.getMediaStreamTrack() ]);
-        await screenVid.play();
-        await camVid.play();
-        // הגדרת גודל קאנבס
-        canvas.width  = window.innerWidth * 0.75;
-        canvas.height = window.innerHeight;
-        // מתחילים merge וידאו
-        mergeInterval = setInterval(() => {
-          // שרטוט מסך
-          ctx.drawImage(screenVid, 0, 0, canvas.width, canvas.height);
-          // שרטוט מצלמה בתחתית
-          const camH = canvas.height / 3;
-          const camW = (camVid.videoWidth / camVid.videoHeight) * camH;
-          ctx.drawImage(camVid, canvas.width - camW, canvas.height - camH, camW, camH);
-        }, 1000/15);
-        // יצירת mergedTrack
-        const mergedStream = canvas.captureStream(15);
-        mergedTrack = AgoraRTC.createCustomVideoTrack({ mediaStreamTrack: mergedStream.getVideoTracks()[0] });
-        // לפרסם merged video + שני audio-tracks
-        await client.publish([ mergedTrack, localTracks.screenAudioTrack, localTracks.micTrack ]);
-        // הצגת merged בוידאו חללי
-        mergedTrack.play('local-screen');
-        btn.innerText = 'עצור שיתוף';
-      } else {
-        // עצירת שיתוף
-        clearInterval(mergeInterval);
-        await client.unpublish([mergedTrack, localTracks.screenAudioTrack]);
-        mergedTrack.stop();
-        localTracks.screenTrack.stop();
-        localTracks.screenTrack.close();
-        localTracks.screenAudioTrack.close();
-        mergedTrack = null;
-        localTracks.screenTrack = null;
-        localTracks.screenAudioTrack = null;
-        document.getElementById('local-screen').innerHTML = '';
-        // ניתן לפרסם מחדש רק מצלמה
-        await client.publish(localTracks.micTrack);
-        btn.innerText = 'שתף מסך';
-      }
-    };
+      // פרסום שני הטרַקסים
+      await client.publish([micTrack, cameraTrack]);
 
-    // כיבוי/הדלקת מצלמה (במקרה שהמשתמש לא משתף)
-    document.getElementById('toggle-camera-btn').onclick = () => {
-      const t = localTracks.micTrack;
-      if (!t) return;
-      t.setEnabled(!t.enabled);
-      document.getElementById('toggle-camera-btn').innerText = t.enabled ? 'כבה מצלמה' : 'הפעל מצלמה';
-    };
-
-    // כיבוי/הדלקת מיקרופון
-    document.getElementById('toggle-mic-btn').onclick = () => {
-      const t = localTracks.micTrack;
-      if (!t) return;
-      t.setEnabled(!t.enabled);
-      document.getElementById('toggle-mic-btn').innerText = t.enabled ? 'כבה מיקרופון' : 'הפעל מיקרופון';
+      // תצוגת המצלמה המקומית
+      cameraTrack.play('local-camera');
     };
   </script>
 </body>
