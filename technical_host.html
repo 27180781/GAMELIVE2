@@ -2,41 +2,120 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>ממשק מפעיל טכני</title>
+  <title>מפעיל טכני – שיתוף מסך בלבד</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="config.js"></script>
+  <style>
+    html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family:Arial,sans-serif; direction:rtl; }
+    #container { display:flex; height:calc(100vh - 60px); }
+    #previews { flex:1; display:flex; }
+    #screen-preview, #cam-preview {
+      flex:1; background:#000; margin:5px; display:flex; align-items:center; justify-content:center;
+    }
+    video { width:100%; height:100%; object-fit:contain; }
+    #controls {
+      height:60px; background:#222; display:flex; align-items:center; justify-content:center; gap:15px;
+    }
+    #controls button { padding:8px 16px; cursor:pointer; }
+  </style>
 </head>
 <body>
-  <h1>ממשק מפעיל טכני</h1>
-  <button id="join-btn">הצטרף לשיתוף מסך ומיקרופון</button>
-  <div id="local-screen" style="width:100%; height:calc(100vh - 50px); background:#000;"></div>
+
+  <!-- כפתורים: הצטרף לשיתוף מסך + מיקרופון + כפתורי Toggle -->
+  <div id="controls">
+    <button id="join-btn">התחל שיתוף מסך + מיקרופון</button>
+    <button id="toggle-screen-btn" disabled>עצור/המשך שיתוף מסך</button>
+    <button id="toggle-mic-btn" disabled>כבה/הפעל מיקרופון</button>
+  </div>
+
+  <!-- תצוגות מקדימות: שמאלית שיתוף מסך מקומי, ימנית מצלמת מנחה רשמי -->
+  <div id="container">
+    <div id="screen-preview">ממתין לשיתוף מסך…</div>
+    <div id="cam-preview">ממתין למצולם…</div>
+  </div>
+
+  <!-- הצ’אט -->
+  <div id="chat-container">
+    <div id="chat-header">צ'אט</div>
+    <div id="chat-messages"></div>
+    <form id="chat-form"><input id="chat-input" placeholder="כתוב הודעה…"></form>
+  </div>
+  <button id="chat-toggle-btn">💬</button>
 
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.14.0.js"></script>
+  <script src="https://download.agora.io/rtm/release/AgoraRTM_N-4.14.0.js"></script>
+  <script src="config.js"></script>  <!-- AGORA_APP_ID, AGORA_TOKEN :contentReference[oaicite:2]{index=2} -->
+  <script src="chat.js"></script>    <!-- initChat(...) :contentReference[oaicite:3]{index=3} -->
+
   <script>
-    const client    = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-    const params    = new URLSearchParams(location.search);
-    const CHANNEL   = params.get('channel');
-    const UID       = Number(params.get('uid'));
-    let micTrack, screenTrack;
+    const rtcClient = AgoraRTC.createClient({ mode:"live", codec:"vp8" });
+    rtcClient.setClientRole("host");
+    const rtmClient = AgoraRTM.createInstance(AGORA_APP_ID);
 
-    document.getElementById('join-btn').onclick = async () => {
-      // הצטרפות לערוץ
-      await client.join(AGORA_APP_ID, CHANNEL, AGORA_TOKEN, UID);
+    const params      = new URLSearchParams(location.search);
+    const channel     = params.get("channel");
+    const uid         = Number(params.get("uid"));
+    const officialUid = Number(params.get("official_uid"));
 
-      // ייצוא מסך עם סאונד
-      screenTrack = await AgoraRTC.createScreenVideoTrack({
-        encoderConfig: '1080p_2',
-        withAudio: true
-      });
+    let screenTrack, micTrack;
 
-      // יצירת מיקרופון (למיקרופון בלבד)
-      micTrack = (await AgoraRTC.createMicrophoneAndCameraTracks())[0];
+    document.getElementById("join-btn").onclick = async () => {
+      const displayName = prompt("הכנס שם לתצוגת הצ'אט:");
+      // הצטרפות ל־RTC ו־RTM
+      await rtcClient.join(AGORA_APP_ID, channel, AGORA_TOKEN, uid);
+      await initChat(rtmClient, channel, uid.toString(), displayName);
 
-      // פרסום שיתוף מסך + מיקרופון
-      await client.publish([screenTrack, micTrack]);
+      // יצירת שיתוף מסך (1080p + סאונד) + מיקרופון
+      screenTrack = await AgoraRTC.createScreenVideoTrack({ encoderConfig:"1080p_2", withAudio:true });
+      micTrack    = (await AgoraRTC.createMicrophoneAndCameraTracks())[0];
+      await rtcClient.publish([ screenTrack, micTrack ]);
 
-      // תצוגת שיתוף המסך המקומית
-      screenTrack.play('local-screen');
+      // תצוגה מקומית
+      screenTrack.play("screen-preview");
+
+      // אפשר כפתורים
+      document.getElementById("toggle-screen-btn").disabled = false;
+      document.getElementById("toggle-mic-btn").disabled    = false;
+    };
+
+    // Toggle שיתוף מסך
+    document.getElementById("toggle-screen-btn").onclick = async () => {
+      const btn = document.getElementById("toggle-screen-btn");
+      if (screenTrack) {
+        await rtcClient.unpublish(screenTrack);
+        screenTrack.stop();
+        screenTrack.close();
+        document.getElementById("screen-preview").innerHTML = "שיתוף מסך נעצר";
+        screenTrack = null;
+        btn.textContent = "המשך שיתוף מסך";
+      } else {
+        screenTrack = await AgoraRTC.createScreenVideoTrack({ encoderConfig:"1080p_2", withAudio:true });
+        await rtcClient.publish(screenTrack);
+        screenTrack.play("screen-preview");
+        btn.textContent = "עצור שיתוף מסך";
+      }
+    };
+
+    // Toggle מיקרופון
+    document.getElementById("toggle-mic-btn").onclick = () => {
+      const btn = document.getElementById("toggle-mic-btn");
+      micTrack.setEnabled(!micTrack.enabled);
+      btn.textContent = micTrack.enabled ? "כבה מיקרופון" : "הפעל מיקרופון";
+    };
+
+    // מאזין ל־remote camera של המנחה הרשמי
+    rtcClient.on("user-published", async (user, mediaType) => {
+      await rtcClient.subscribe(user, mediaType);
+      if (user.uid === officialUid && mediaType === "video") {
+        user.videoTrack.play("cam-preview");
+      }
+      if (user.uid === officialUid && mediaType === "audio") {
+        user.audioTrack.play();
+      }
+    });
+
+    // צ’אט – כפתור פתיחה/סגירה
+    document.getElementById("chat-toggle-btn").onclick = () => {
+      document.getElementById("chat-container").classList.toggle("open");
     };
   </script>
 </body>
