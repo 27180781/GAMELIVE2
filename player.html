@@ -6,29 +6,61 @@
   <link rel="stylesheet" href="styles.css">
   <script src="config.js"></script>
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; direction: rtl; }
+    html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family: Arial, sans-serif; direction: rtl; }
     #container { display: flex; height: 100vh; }
+
     /* 3/4 רוחב לשידור המסך */
-    #main-video { flex: 3; background: #000; }
-    /* 1/4 רוחב לשלט+מצלמה */
-    #side-panel { flex: 1; display: flex; flex-direction: column; border-left: 2px solid #333; }
-    #game-ui { flex: 2; background: #111; }
-    #camera-ui { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
-    iframe { width: 100%; height: 100%; border: none; }
-    video { width: 100%; height: 100%; object-fit: cover; }
-    /* צ'אט מינימלי */
-    #chat-container { position: absolute; bottom: 10px; left: 10px; width: 300px; max-height: 400px; background: rgba(0,0,0,0.6); color: #fff; display: none; flex-direction: column; }
-    #chat-header { padding: 8px; background: #222; }
-    #chat-messages { flex: 1; overflow-y: auto; padding: 8px; }
-    #chat-form { display: flex; }
-    #chat-input { flex: 1; padding: 6px; }
-    #chat-toggle-btn { position: absolute; bottom: 10px; left: 320px; padding: 8px; cursor: pointer; }
+    #main-video {
+      flex: 3;
+      background: #000;
+      position: relative;
+    }
+    #main-video video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* 1/4 רוחב לשלט + מצלמה */
+    #side-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-left: 2px solid #333;
+      background: #111;
+    }
+    /* 2/3 מהגובה לשלט (iframe) */
+    #game-ui {
+      flex: 2;
+      background: #222;
+    }
+    /* 1/3 מהגובה למצלמה */
+    #camera-ui {
+      flex: 1;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #gameFrame {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    #host-video {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
   </style>
 </head>
 <body>
 
   <div id="container">
+    <!-- 3/4 לשידור משולב של screen+cam -->
     <div id="main-video"></div>
+
+    <!-- 1/4 לשלט + מצלמה -->
     <div id="side-panel">
       <div id="game-ui">
         <iframe id="gameFrame" src=""></iframe>
@@ -39,59 +71,51 @@
     </div>
   </div>
 
-  <!-- צ'אט -->
-  <div id="chat-container">
-    <div id="chat-header">צ'אט</div>
-    <div id="chat-messages"></div>
-    <form id="chat-form"><input id="chat-input" placeholder="כתוב הודעה..." autocomplete="off"></form>
-  </div>
-  <button id="chat-toggle-btn">💬</button>
-
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.14.0.js"></script>
-  <script src="https://download.agora.io/rtm/release/AgoraRTM_N-4.14.0.js"></script>
-  <script src="chat.js"></script>
   <script>
+    // קריאה לפרמטרים מה-URL
     const params        = new URLSearchParams(location.search);
     const CHANNEL       = params.get('channel');
     const GAME_CODE     = params.get('gamecode');
     const officialUid   = Number(params.get('official_uid'));
     const technicalUid  = Number(params.get('technical_uid'));
 
-    // בונה קישור לשלט המשחק
+    // אתחול ה-iframe של שלט המשחק
     document.getElementById('gameFrame').src =
       `https://game.clicker.co.il/phone.html?code=${encodeURIComponent(GAME_CODE)}`;
 
-    // אתחול RTC
+    // אתחול לקוח Agora
     const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+
     client.on('user-published', async (user, mediaType) => {
+      // subscribe לכל סוג מדיה
       await client.subscribe(user, mediaType);
+
       if (mediaType === 'video') {
-        // שיתוף מסך מה-technicalUid
+        // אם זה screen-share מה-technicalUid
         if (user.uid === technicalUid) {
           document.getElementById('main-video').innerHTML = '';
           user.videoTrack.play('main-video');
         }
-        // מצלמת מפעיל רשמי מה-officialUid
+        // אם זו מצלמת המפעיל הרשמי
         if (user.uid === officialUid) {
           document.getElementById('host-video').innerHTML = '';
           user.videoTrack.play('host-video');
         }
       }
+
       if (mediaType === 'audio') {
+        // נשמע גם screen audio וגם mic מכל הצדדים
         user.audioTrack.play();
       }
     });
 
     (async () => {
+      // הצטרפות כ־subscriber (UID=null כדי לקבל כל USER)
       await client.join(AGORA_APP_ID, CHANNEL, AGORA_TOKEN, null);
-
-      // אתחול צ'אט (chat.js)
-      await initChat(CHANNEL);
-      document.getElementById('chat-toggle-btn').onclick = () => {
-        const c = document.getElementById('chat-container');
-        c.style.display = c.style.display === 'flex' ? 'none' : 'flex';
-      };
+      // אין פה publish, רק subscribe
     })();
   </script>
+
 </body>
 </html>
