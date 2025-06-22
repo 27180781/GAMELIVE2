@@ -2,109 +2,119 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>מנחה רשמי – מצלמה בלבד</title>
+  <title>מנחה רשמי – מצלמה ומיקרופון + תצוגת שיתוף מסך</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family:Arial,sans-serif; direction:rtl; }
-    #container { display:flex; height:calc(100vh - 60px); } /* בלי שורה של כפתורים למעלה */
-    #previews { flex:1; display:flex; }
-    #screen-preview, #cam-preview {
-      flex:1; background:#000; margin:5px; display:flex; align-items:center; justify-content:center;
-    }
-    video { width:100%; height:100%; object-fit:contain; }
     #controls {
-      height:60px; background:#222; display:flex; align-items:center; justify-content:center; gap:15px;
+      height:60px; background:#222; display:flex; align-items:center; justify-content:center; gap:10px;
     }
-    #controls button { padding:8px 16px; cursor:pointer; }
+    #controls button { padding:8px 16px; cursor:pointer; color:#fff; background:#444; border:none; }
+    #previews {
+      display:flex; height:calc(100vh - 60px);
+    }
+    #screen-preview, #cam-preview {
+      flex:1; margin:5px; background:#000; display:flex; align-items:center; justify-content:center;
+    }
+    #screen-preview { position: relative; }
+    #screen-preview video, #cam-preview video {
+      width:100%; height:100%; object-fit:contain;
+    }
+    /* צ'אט */
+    #chat-container { position:absolute; bottom:10px; left:10px; width:300px; max-height:400px; display:none; flex-direction:column; background:rgba(0,0,0,0.7); color:#fff; }
+    #chat-header { padding:8px; background:#333; }
+    #chat-messages { flex:1; overflow-y:auto; padding:8px; }
+    #chat-form { display:flex; }
+    #chat-input { flex:1; padding:6px; border:none; }
+    #chat-toggle-btn { position:absolute; bottom:10px; left:320px; padding:8px; font-size:18px; cursor:pointer; }
   </style>
 </head>
 <body>
 
-  <!-- כפתורי התחלה ושליטה -->
   <div id="controls">
     <button id="join-btn">התחל שידור (מצלמה + מיקרופון)</button>
-    <button id="toggle-cam-btn" disabled>כבה/הפעל מצלמה</button>
-    <button id="toggle-mic-btn" disabled>כבה/הפעל מיקרופון</button>
+    <button id="toggle-cam" disabled>כבה מצלמה</button>
+    <button id="toggle-mic" disabled>כבה מיקרופון</button>
   </div>
 
-  <!-- תצוגות מקדימות: שמאלית שיתוף מסך של טכני, ימנית מצלמת מנחה -->
-  <div id="container">
-    <div id="screen-preview">ממתין לשיתוף מסך…</div>
-    <div id="cam-preview">ממתין למצולם…</div>
+  <div id="previews">
+    <div id="screen-preview">ממתין לשיתוף מסך מהטכני…</div>
+    <div id="cam-preview">ממתין למצלמה…</div>
   </div>
 
-  <!-- הצ’אט -->
+  <!-- צ'אט -->
   <div id="chat-container">
     <div id="chat-header">צ'אט</div>
     <div id="chat-messages"></div>
-    <form id="chat-form"><input id="chat-input" placeholder="כתוב הודעה…"></form>
+    <form id="chat-form"><input id="chat-input" placeholder="כתוב הודעה…" autocomplete="off"></form>
   </div>
   <button id="chat-toggle-btn">💬</button>
 
-  <!-- ספריות Agora ו-Chat -->
+  <!-- Agora SDKs -->
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.14.0.js"></script>
   <script src="https://download.agora.io/rtm/release/AgoraRTM_N-4.14.0.js"></script>
-  <script src="config.js"></script>  <!-- AGORA_APP_ID, AGORA_TOKEN :contentReference[oaicite:0]{index=0} -->
-  <script src="chat.js"></script>    <!-- initChat(...) :contentReference[oaicite:1]{index=1} -->
+  <script src="config.js"></script>  <!-- AGORA_APP_ID, AGORA_TOKEN -->
+  <script src="chat.js"></script>    <!-- initChat(channel, uid, displayName) -->
 
   <script>
-    const rtcClient = AgoraRTC.createClient({ mode:"live", codec:"vp8" });
+    const rtcClient    = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
     rtcClient.setClientRole("host");
-    const rtmClient = AgoraRTM.createInstance(AGORA_APP_ID);
+    const rtmClient    = AgoraRTM.createInstance(AGORA_APP_ID);
 
     const params       = new URLSearchParams(location.search);
     const channel      = params.get("channel");
     const uid          = Number(params.get("uid"));
     const technicalUid = Number(params.get("technical_uid"));
 
-    let audioTrack, videoTrack;
+    let micTrack, camTrack;
 
     document.getElementById("join-btn").onclick = async () => {
-      // התחברות ל-RTC ול-RTM
-      const displayName = prompt("הכנס שם לתצוגת הצ'אט:");
+      // התחבר ל-RTC ול-RTM
       await rtcClient.join(AGORA_APP_ID, channel, AGORA_TOKEN, uid);
+      const displayName = prompt("הכנס שם להצגה בצ'אט:");
       await initChat(rtmClient, channel, uid.toString(), displayName);
 
-      // יצירת ומורסום מצלמה + מיקרופון
-      [ audioTrack, videoTrack ] = await AgoraRTC.createMicrophoneAndCameraTracks();
-      await rtcClient.publish([ audioTrack, videoTrack ]);
+      // צור מיקרופון + מצלמה
+      [ micTrack, camTrack ] = await AgoraRTC.createMicrophoneAndCameraTracks();
+      await rtcClient.publish([ micTrack, camTrack ]);
 
-      // תצוגה מקומית של מצלמת מנחה
-      videoTrack.play("cam-preview");
+      // הצג מקומית
+      camTrack.play("cam-preview");
+      micTrack.play();
 
       // אפשר כפתורים
-      document.getElementById("toggle-cam-btn").disabled = false;
-      document.getElementById("toggle-mic-btn").disabled = false;
+      document.getElementById("toggle-cam").disabled = false;
+      document.getElementById("toggle-mic").disabled = false;
     };
 
-    // כפתורים לכיבוי/הדלקת מצלמה ומיקרופון
-    document.getElementById("toggle-cam-btn").onclick = () => {
-      const btn = document.getElementById("toggle-cam-btn");
-      videoTrack.setEnabled(!videoTrack.enabled);
-      btn.textContent = videoTrack.enabled ? "כבה מצלמה" : "הפעל מצלמה";
+    // Toggle מצלמה
+    document.getElementById("toggle-cam").onclick = () => {
+      camTrack.setEnabled(!camTrack.enabled);
+      document.getElementById("toggle-cam").textContent = camTrack.enabled ? "כבה מצלמה" : "הפעל מצלמה";
     };
-    document.getElementById("toggle-mic-btn").onclick = () => {
-      const btn = document.getElementById("toggle-mic-btn");
-      audioTrack.setEnabled(!audioTrack.enabled);
-      btn.textContent = audioTrack.enabled ? "כבה מיקרופון" : "הפעל מיקרופון";
+    // Toggle מיקרופון
+    document.getElementById("toggle-mic").onclick = () => {
+      micTrack.setEnabled(!micTrack.enabled);
+      document.getElementById("toggle-mic").textContent = micTrack.enabled ? "כבה מיקרופון" : "הפעל מיקרופון";
     };
 
-    // מאזינים ל-remote stream (שיתוף מסך של הטכני + מיקרופון שלו)
+    // Subscribe לשיתוף מסך של המפעיל הטכני
     rtcClient.on("user-published", async (user, mediaType) => {
+      if (user.uid !== technicalUid) return;
       await rtcClient.subscribe(user, mediaType);
-      if (user.uid === technicalUid) {
-        if (mediaType === "video") {
-          user.videoTrack.play("screen-preview");
-        }
-        if (mediaType === "audio") {
-          user.audioTrack.play();
-        }
+      if (mediaType === "video") {
+        user.videoTrack.play("screen-preview");
+      }
+      if (mediaType === "audio") {
+        user.audioTrack.play();
       }
     });
 
-    // צ’אט – כפתור פתיחה/סגירה
+    // צ'אט – פתיחה/סגירה
     document.getElementById("chat-toggle-btn").onclick = () => {
-      document.getElementById("chat-container").classList.toggle("open");
+      const c = document.getElementById("chat-container");
+      c.style.display = c.style.display === "flex" ? "none" : "flex";
+      if (c.style.display === "flex") c.style.flexDirection = "column";
     };
   </script>
 </body>
