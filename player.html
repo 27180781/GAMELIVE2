@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>ממשק שחקן</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+</head>
+<body>
+  <div id="container" style="display:flex; height:100vh;">
+    <div id="main-video" style="flex:4; background:#000; display:flex; align-items:center; justify-content:center;">ממתין למסך המשחק…</div>
+    <div id="host-video" style="flex:1; background:#111; display:flex; align-items:center; justify-content:center;">ממתין למצלמה…</div>
+  </div>
+
+  <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.14.0.js"></script>
+  <script>
+    const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    const urlParams = new URLSearchParams(location.search);
+    const CHANNEL_NAME = urlParams.get('channel');
+    const GAME_CODE = urlParams.get('gamecode');
+
+    client.on('user-published', async (user, mediaType) => {
+      await client.subscribe(user, mediaType);
+      if (mediaType === 'video') {
+        const track = user.videoTrack;
+        const isScreen = track.getMediaStreamTrack().label.toLowerCase().includes('screen');
+        const container = isScreen ? 'main-video' : 'host-video';
+        document.getElementById(container).innerHTML = '';
+        track.play(container);
+      }
+      if (mediaType === 'audio') {
+        user.audioTrack.play();
+      }
+    });
+
+    (async () => {
+      await client.join(AGORA_APP_ID, CHANNEL_NAME, AGORA_TOKEN, null);
+    })();
+  </script>
+</body>
+</html>

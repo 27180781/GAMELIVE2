@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>מחולל קישורים למשחק טריוויה</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; text-align: center; direction: rtl; }
+    label { display: block; margin: 15px 0 5px; }
+    input { padding: 8px; width: 220px; }
+    button#generateBtn { padding: 10px 20px; margin-top: 10px; cursor: pointer; }
+    #links { margin-top: 20px; text-align: left; display: inline-block; }
+    #links ul { list-style: none; padding: 0; }
+    #links li { margin-bottom: 12px; }
+    #links a { color: #60a5fa; word-break: break-all; }
+    #links button { margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <h1>מחולל קישורים למשחק טריוויה</h1>
+
+  <label for="channelInput">שם ערוץ (channel):</label>
+  <input id="channelInput" placeholder="livegame_test_channel">
+
+  <label for="gameCodeInput">קוד משחק (gamecode):</label>
+  <input id="gameCodeInput" placeholder="1234">
+
+  <button id="generateBtn">צור קישורים</button>
+
+  <div id="links"></div>
+
+  <script>
+    document.getElementById('generateBtn').addEventListener('click', () => {
+      const channelName = document.getElementById('channelInput').value.trim() || 'livegame_test_channel';
+      const gameCode   = document.getElementById('gameCodeInput').value.trim()   || '1234';
+
+      const baseUrl = new URL('.', window.location.href).href;
+      const baseUid           = Math.floor(Math.random() * 100000);
+      const officialHostUid   = baseUid + 1;
+      const technicalHostUid  = baseUid + 2;
+
+      const officialHostUrl  = `${baseUrl}official_host.html?channel=${encodeURIComponent(channelName)}&uid=${officialHostUid}`;
+      const technicalHostUrl = `${baseUrl}technical_host.html?channel=${encodeURIComponent(channelName)}&uid=${technicalHostUid}&host_uid=${officialHostUid}`;
+      const playerUrl        = `${baseUrl}player.html?channel=${encodeURIComponent(channelName)}&gamecode=${encodeURIComponent(gameCode)}&official_uid=${officialHostUid}&tech_uid=${technicalHostUid}`;
+
+      const linksDiv = document.getElementById('links');
+      linksDiv.innerHTML = \`
+        <ul>
+          <li>
+            <strong>מפעיל רשמי:</strong><br>
+            <a href="\${officialHostUrl}" target="_blank">\${officialHostUrl}</a>
+            <button data-link="\${officialHostUrl}">העתק</button>
+          </li>
+          <li>
+            <strong>מפעיל טכני:</strong><br>
+            <a href="\${technicalHostUrl}" target="_blank">\${technicalHostUrl}</a>
+            <button data-link="\${technicalHostUrl}">העתק</button>
+          </li>
+          <li>
+            <strong>שחקנים:</strong><br>
+            <a href="\${playerUrl}" target="_blank">\${playerUrl}</a>
+            <button data-link="\${playerUrl}">העתק</button>
+          </li>
+        </ul>
+      \`;
+      linksDiv.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(btn.getAttribute('data-link'));
+          btn.innerText = 'הועתק!';
+          setTimeout(() => btn.innerText = 'העתק', 1500);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
