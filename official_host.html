@@ -8,56 +8,74 @@
 </head>
 <body>
   <h1>ממשק מפעיל רשמי</h1>
+
   <div id="controls">
     <button id="join-btn">הצטרף כ־מפעיל</button>
     <button id="share-screen-btn" disabled>שתף מסך</button>
     <button id="toggle-camera-btn" disabled>כבה/הפעל מצלמה</button>
     <button id="toggle-mic-btn" disabled>כבה/הפעל מיקרופון</button>
   </div>
+
   <div id="video-container"></div>
 
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.14.0.js"></script>
   <script>
     const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-    const urlParams = new URLSearchParams(location.search);
+    const urlParams    = new URLSearchParams(location.search);
     const CHANNEL_NAME = urlParams.get('channel');
-    const UID = urlParams.get('uid');
+    const UID          = Number(urlParams.get('uid'));
 
-    let localTracks = {};
+    let localTracks = { audioTrack: null, videoTrack: null, screenTrack: null };
     let joined = false;
 
+    // 1. הצטרפות ופרסום מיקרופון + מצלמה
     document.getElementById('join-btn').onclick = async () => {
       if (joined) return;
       await client.join(AGORA_APP_ID, CHANNEL_NAME, AGORA_TOKEN, UID);
-      const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+      const [ audioTrack, videoTrack ] = await AgoraRTC.createMicrophoneAndCameraTracks();
       localTracks.audioTrack = audioTrack;
       localTracks.videoTrack = videoTrack;
-      await client.publish([audioTrack, videoTrack]);
+      await client.publish([ audioTrack, videoTrack ]);
       joined = true;
+
+      // אפשר כעת שיתוף מסך וכפתורי בחירה
       document.getElementById('share-screen-btn').disabled = false;
       document.getElementById('toggle-camera-btn').disabled = false;
-      document.getElementById('toggle-mic-btn').disabled = false;
+      document.getElementById('toggle-mic-btn').disabled    = false;
+
       videoTrack.play(createVideoContainer('local-camera'));
       audioTrack.play();
     };
 
+    // 2. לחיצה על "שתף מסך"
     document.getElementById('share-screen-btn').onclick = async () => {
       const btn = document.getElementById('share-screen-btn');
+
       if (!localTracks.screenTrack) {
+        // מבטלים קודם את שידור המצלמה הרגיל
+        await client.unpublish(localTracks.videoTrack);
+
+        // יוצרים ומשדרים את מסך השיתוף
         localTracks.screenTrack = await AgoraRTC.createScreenVideoTrack();
         await client.publish(localTracks.screenTrack);
         localTracks.screenTrack.play(createVideoContainer('local-screen'));
+
         btn.innerText = 'עצור שיתוף';
       } else {
+        // מפסיקים את השיתוף
+        await client.unpublish(localTracks.screenTrack);
         localTracks.screenTrack.stop();
         localTracks.screenTrack.close();
-        await client.unpublish(localTracks.screenTrack);
         removeVideoContainer('local-screen');
         localTracks.screenTrack = null;
+
+        // משחזרים חזרה את מצלמת הוידאו
+        await client.publish(localTracks.videoTrack);
         btn.innerText = 'שתף מסך';
       }
     };
 
+    // 3. כפתור כיבוי/הדלקת מצלמה
     document.getElementById('toggle-camera-btn').onclick = () => {
       const t = localTracks.videoTrack;
       if (!t) return;
@@ -65,6 +83,7 @@
       document.getElementById('toggle-camera-btn').innerText = t.enabled ? 'כבה מצלמה' : 'הפעל מצלמה';
     };
 
+    // 4. כפתור כיבוי/הדלקת מיקרופון
     document.getElementById('toggle-mic-btn').onclick = () => {
       const t = localTracks.audioTrack;
       if (!t) return;
@@ -72,6 +91,7 @@
       document.getElementById('toggle-mic-btn').innerText = t.enabled ? 'כבה מיקרופון' : 'הפעל מיקרופון';
     };
 
+    // עזר ליצירת אלמנט וידאו במשקף
     function createVideoContainer(id) {
       const div = document.createElement('div');
       div.id = id;
