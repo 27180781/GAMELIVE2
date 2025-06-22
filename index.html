@@ -1,76 +1,94 @@
+
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>מחולל קישורים למשחק טריוויה</title>
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; text-align: center; direction: rtl; }
-    label { display: block; margin: 15px 0 5px; }
-    input { padding: 8px; width: 220px; }
-    button#generateBtn { padding: 10px 20px; margin-top: 10px; cursor: pointer; }
-    #links { margin-top: 20px; text-align: left; display: inline-block; }
-    #links ul { list-style: none; padding: 0; }
-    #links li { margin-bottom: 12px; }
-    #links a { color: #60a5fa; word-break: break-all; }
-    #links button { margin-left: 8px; }
-  </style>
+    <meta charset="UTF-8">
+    <title>מחולל קישורי משחק לייב - חוויה בקליק</title>
+    <style>
+        body {
+            background-color: #f4f4f4;
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+        h1 {
+            color: #333;
+        }
+        input, button {
+            font-size: 16px;
+            padding: 10px;
+            margin: 10px;
+            width: 300px;
+        }
+        .link-group {
+            margin-top: 30px;
+        }
+        .link-container {
+            background-color: #fff;
+            padding: 15px;
+            margin: 10px auto;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        a {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #0073e6;
+            word-wrap: break-word;
+        }
+        .copy-btn {
+            background-color: #0073e6;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-  <h1>מחולל קישורים למשחק טריוויה</h1>
+    <h1>מחולל קישורי משחק לייב<br>חוויה בקליק</h1>
+    <input type="text" id="gameId" placeholder="הכנס את קוד המשחק">
+    <br>
+    <button onclick="generateLinks()">צור קישורים</button>
+    <div class="link-group" id="links"></div>
 
-  <label for="channelInput">שם ערוץ (channel):</label>
-  <input id="channelInput" placeholder="livegame_test_channel">
+    <script>
+        async function generateLinks() {
+            const channelName = document.getElementById('gameId').value.trim();
+            const uid = Math.floor(Math.random() * 1000000);
+            if (!channelName) {
+                alert("נא להכניס קוד משחק");
+                return;
+            }
 
-  <label for="gameCodeInput">קוד משחק (gamecode):</label>
-  <input id="gameCodeInput" placeholder="1234">
+            const response = await fetch('https://agora-token-generator.caprover.clicker.co.il/generate_token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channel_name: channelName, uid })
+            });
 
-  <button id="generateBtn">צור קישורים</button>
+            const data = await response.json();
+            const token = data.rtcToken;
+            const links = [
+                { name: 'כניסת שחקן', url: `https://clicker.co.il/player.html?c=${channelName}&uid=${uid}&token=${token}` },
+                { name: 'כניסת מנחה', url: `https://clicker.co.il/official_host.html?c=${channelName}&uid=${uid}&token=${token}` },
+                { name: 'כניסת טכנאי', url: `https://clicker.co.il/technical_host.html?c=${channelName}&uid=${uid}&token=${token}` }
+            ];
 
-  <div id="links"></div>
-
-  <script>
-    document.getElementById('generateBtn').addEventListener('click', () => {
-      const channelName = document.getElementById('channelInput').value.trim() || 'livegame_test_channel';
-      const gameCode    = document.getElementById('gameCodeInput').value.trim()   || '1234';
-
-      const baseUrl          = new URL('.', window.location.href).href;
-      const baseUid          = Math.floor(Math.random() * 100000);
-      const officialHostUid  = baseUid + 1;
-      const technicalHostUid = baseUid + 2;
-
-      const officialHostUrl  = `${baseUrl}official_host.html?channel=${encodeURIComponent(channelName)}&uid=${officialHostUid}`;
-      const technicalHostUrl = `${baseUrl}technical_host.html?channel=${encodeURIComponent(channelName)}&uid=${technicalHostUid}&host_uid=${officialHostUid}`;
-      const playerUrl        = `${baseUrl}player.html?channel=${encodeURIComponent(channelName)}&gamecode=${encodeURIComponent(gameCode)}&official_uid=${officialHostUid}&tech_uid=${technicalHostUid}`;
-
-      const linksDiv = document.getElementById('links');
-      linksDiv.innerHTML = `
-        <ul>
-          <li>
-            <strong>מפעיל רשמי:</strong><br>
-            <a href="${officialHostUrl}" target="_blank">${officialHostUrl}</a>
-            <button data-link="${officialHostUrl}">העתק</button>
-          </li>
-          <li>
-            <strong>מפעיל טכני:</strong><br>
-            <a href="${technicalHostUrl}" target="_blank">${technicalHostUrl}</a>
-            <button data-link="${technicalHostUrl}">העתק</button>
-          </li>
-          <li>
-            <strong>שחקנים:</strong><br>
-            <a href="${playerUrl}" target="_blank">${playerUrl}</a>
-            <button data-link="${playerUrl}">העתק</button>
-          </li>
-        </ul>
-      `;
-      linksDiv.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', () => {
-          navigator.clipboard.writeText(btn.getAttribute('data-link'));
-          btn.innerText = 'הועתק!';
-          setTimeout(() => btn.innerText = 'העתק', 1500);
-        });
-      });
-    });
-  </script>
+            const container = document.getElementById('links');
+            container.innerHTML = '';
+            links.forEach(link => {
+                const div = document.createElement('div');
+                div.className = 'link-container';
+                div.innerHTML = `
+                    <a href="${link.url}" target="_blank">${link.name}</a>
+                    <button class="copy-btn" onclick="navigator.clipboard.writeText('${link.url}')">העתק קישור</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
 </body>
 </html>
