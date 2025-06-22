@@ -32,37 +32,37 @@
   <script>
     document.getElementById('generateBtn').addEventListener('click', () => {
       const channelName = document.getElementById('channelInput').value.trim() || 'livegame_test_channel';
-      const gameCode   = document.getElementById('gameCodeInput').value.trim()   || '1234';
+      const gameCode    = document.getElementById('gameCodeInput').value.trim()   || '1234';
 
-      const baseUrl = new URL('.', window.location.href).href;
-      const baseUid           = Math.floor(Math.random() * 100000);
-      const officialHostUid   = baseUid + 1;
-      const technicalHostUid  = baseUid + 2;
+      const baseUrl          = new URL('.', window.location.href).href;
+      const baseUid          = Math.floor(Math.random() * 100000);
+      const officialHostUid  = baseUid + 1;
+      const technicalHostUid = baseUid + 2;
 
       const officialHostUrl  = `${baseUrl}official_host.html?channel=${encodeURIComponent(channelName)}&uid=${officialHostUid}`;
       const technicalHostUrl = `${baseUrl}technical_host.html?channel=${encodeURIComponent(channelName)}&uid=${technicalHostUid}&host_uid=${officialHostUid}`;
       const playerUrl        = `${baseUrl}player.html?channel=${encodeURIComponent(channelName)}&gamecode=${encodeURIComponent(gameCode)}&official_uid=${officialHostUid}&tech_uid=${technicalHostUid}`;
 
       const linksDiv = document.getElementById('links');
-      linksDiv.innerHTML = \`
+      linksDiv.innerHTML = `
         <ul>
           <li>
             <strong>מפעיל רשמי:</strong><br>
-            <a href="\${officialHostUrl}" target="_blank">\${officialHostUrl}</a>
-            <button data-link="\${officialHostUrl}">העתק</button>
+            <a href="${officialHostUrl}" target="_blank">${officialHostUrl}</a>
+            <button data-link="${officialHostUrl}">העתק</button>
           </li>
           <li>
             <strong>מפעיל טכני:</strong><br>
-            <a href="\${technicalHostUrl}" target="_blank">\${technicalHostUrl}</a>
-            <button data-link="\${technicalHostUrl}">העתק</button>
+            <a href="${technicalHostUrl}" target="_blank">${technicalHostUrl}</a>
+            <button data-link="${technicalHostUrl}">העתק</button>
           </li>
           <li>
             <strong>שחקנים:</strong><br>
-            <a href="\${playerUrl}" target="_blank">\${playerUrl}</a>
-            <button data-link="\${playerUrl}">העתק</button>
+            <a href="${playerUrl}" target="_blank">${playerUrl}</a>
+            <button data-link="${playerUrl}">העתק</button>
           </li>
         </ul>
-      \`;
+      `;
       linksDiv.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('click', () => {
           navigator.clipboard.writeText(btn.getAttribute('data-link'));
