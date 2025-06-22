@@ -1,3 +1,3 @@
 // config.js - הגדרות Agora
-const AGORA_APP_ID = "YOUR_AGORA_APP_ID";
-const AGORA_TOKEN  = "YOUR_TEMP_TOKEN"; // Temporary token, עד למימוש צד-שרת
+const AGORA_APP_ID = "517f71a5aa8a45a8a222341136c439c4";
+const AGORA_TOKEN  = "007eJxTYCiQzjHKZz93Y+Px7oi0V6LOPYtLjZddFWybFsLDMNtn2mUFBlND8zRzw0TTxESLRBNTIGFkZGRsYmhobJZsYmyZbBJyPDyjIZCR4cOErSyMDBAI4rMwGALVMTAAANsXHWI=";
