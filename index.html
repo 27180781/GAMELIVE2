@@ -68,7 +68,7 @@ function generateLinks() {
     return;
   }
 
-  const base = location.origin;
+  const base = location.origin + '/GAMELIVE2';
   const player = `${base}/player.html?code=${code}&token=${encodeURIComponent(token)}`;
   const official = `${base}/official_host.html?channel=${code}&uid=1000&token=${encodeURIComponent(token)}`;
   const tech = `${base}/technical_host.html?channel=${code}&uid=2000&official_uid=1000&token=${encodeURIComponent(token)}`;
