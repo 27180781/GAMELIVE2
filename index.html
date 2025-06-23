@@ -1,94 +1,97 @@
-
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he">
 <head>
-    <meta charset="UTF-8">
-    <title>מחולל קישורי משחק לייב - חוויה בקליק</title>
-    <style>
-        body {
-            background-color: #f4f4f4;
-            font-family: 'Arial', sans-serif;
-            text-align: center;
-            padding: 50px;
-        }
-        h1 {
-            color: #333;
-        }
-        input, button {
-            font-size: 16px;
-            padding: 10px;
-            margin: 10px;
-            width: 300px;
-        }
-        .link-group {
-            margin-top: 30px;
-        }
-        .link-container {
-            background-color: #fff;
-            padding: 15px;
-            margin: 10px auto;
-            width: 90%;
-            max-width: 600px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        a {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #0073e6;
-            word-wrap: break-word;
-        }
-        .copy-btn {
-            background-color: #0073e6;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>מחולל קישורי משחק לייב - חוויה בקליק</title>
+  <style>
+    body {
+      direction: rtl;
+      font-family: sans-serif;
+      background-color: #f7f7f7;
+      padding: 2rem;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 1rem;
+      margin: 10px;
+    }
+    .links {
+      margin-top: 20px;
+    }
+    .link-box {
+      background: #fff;
+      padding: 10px;
+      margin: 10px auto;
+      border: 1px solid #ddd;
+      width: 90%;
+      max-width: 600px;
+    }
+  </style>
 </head>
 <body>
-    <h1>מחולל קישורי משחק לייב<br>חוויה בקליק</h1>
-    <input type="text" id="gameId" placeholder="הכנס את קוד המשחק">
-    <br>
-    <button onclick="generateLinks()">צור קישורים</button>
-    <div class="link-group" id="links"></div>
 
-    <script>
-        async function generateLinks() {
-            const channelName = document.getElementById('gameId').value.trim();
-            const uid = Math.floor(Math.random() * 1000000);
-            if (!channelName) {
-                alert("נא להכניס קוד משחק");
-                return;
-            }
+  <h1>🎮 מחולל קישורי משחק לייב - חוויה בקליק</h1>
 
-            const response = await fetch('https://agora-token-generator.caprover.clicker.co.il/generate_token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channel_name: channelName, uid })
-            });
+  <label for="gameCode">הכנס את קוד המשחק:</label><br>
+  <input id="gameCode" placeholder="לדוג': 1234" /><br>
 
-            const data = await response.json();
-            const token = data.rtcToken;
-            const links = [
-                { name: 'כניסת שחקן', url: `https://clicker.co.il/player.html?c=${channelName}&uid=${uid}&token=${token}` },
-                { name: 'כניסת מנחה', url: `https://clicker.co.il/official_host.html?c=${channelName}&uid=${uid}&token=${token}` },
-                { name: 'כניסת טכנאי', url: `https://clicker.co.il/technical_host.html?c=${channelName}&uid=${uid}&token=${token}` }
-            ];
+  <label for="token">הכנס את האסימון (token):</label><br>
+  <input id="token" placeholder="הדבק כאן את ה-token" style="width:80%" /><br>
 
-            const container = document.getElementById('links');
-            container.innerHTML = '';
-            links.forEach(link => {
-                const div = document.createElement('div');
-                div.className = 'link-container';
-                div.innerHTML = `
-                    <a href="${link.url}" target="_blank">${link.name}</a>
-                    <button class="copy-btn" onclick="navigator.clipboard.writeText('${link.url}')">העתק קישור</button>
-                `;
-                container.appendChild(div);
-            });
-        }
-    </script>
+  <button onclick="generateLinks()">צור קישורים</button>
+
+  <div class="links" id="linksContainer" style="display:none;">
+    <div class="link-box">
+      <b>🔗 קישור לשחקנים:</b>
+      <div><a id="playerLink" href="#" target="_blank"></a></div>
+      <button onclick="copyToClipboard('playerLink')">📋 העתק</button>
+    </div>
+    <div class="link-box">
+      <b>🎥 קישור למנחה רשמי:</b>
+      <div><a id="officialHostLink" href="#" target="_blank"></a></div>
+      <button onclick="copyToClipboard('officialHostLink')">📋 העתק</button>
+    </div>
+    <div class="link-box">
+      <b>💻 קישור למפעיל טכנולוגי:</b>
+      <div><a id="technicalHostLink" href="#" target="_blank"></a></div>
+      <button onclick="copyToClipboard('technicalHostLink')">📋 העתק</button>
+    </div>
+  </div>
+
+<script>
+function generateLinks() {
+  const code = document.getElementById("gameCode").value.trim();
+  const token = document.getElementById("token").value.trim();
+  if (!code || !token) {
+    alert("יש להזין גם קוד משחק וגם אסימון");
+    return;
+  }
+
+  const base = location.origin;
+  const player = `${base}/player.html?code=${code}&token=${encodeURIComponent(token)}`;
+  const official = `${base}/official_host.html?channel=${code}&uid=1000&token=${encodeURIComponent(token)}`;
+  const tech = `${base}/technical_host.html?channel=${code}&uid=2000&official_uid=1000&token=${encodeURIComponent(token)}`;
+
+  document.getElementById("playerLink").href = player;
+  document.getElementById("playerLink").textContent = player;
+
+  document.getElementById("officialHostLink").href = official;
+  document.getElementById("officialHostLink").textContent = official;
+
+  document.getElementById("technicalHostLink").href = tech;
+  document.getElementById("technicalHostLink").textContent = tech;
+
+  document.getElementById("linksContainer").style.display = "block";
+}
+
+function copyToClipboard(elementId) {
+  const url = document.getElementById(elementId).href;
+  navigator.clipboard.writeText(url).then(() => {
+    alert("הקישור הועתק בהצלחה!");
+  });
+}
+</script>
+
 </body>
 </html>
