@@ -1,97 +1,76 @@
+
 <!DOCTYPE html>
 <html lang="he">
 <head>
-  <meta charset="UTF-8">
-  <title>מחולל קישורי משחק לייב - חוויה בקליק</title>
-  <style>
-    body {
-      direction: rtl;
-      font-family: sans-serif;
-      background-color: #f7f7f7;
-      padding: 2rem;
-      text-align: center;
-    }
-    input, button {
-      padding: 10px;
-      font-size: 1rem;
-      margin: 10px;
-    }
-    .links {
-      margin-top: 20px;
-    }
-    .link-box {
-      background: #fff;
-      padding: 10px;
-      margin: 10px auto;
-      border: 1px solid #ddd;
-      width: 90%;
-      max-width: 600px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>מחולל קישורי משחק - חוויה בקליק</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            direction: rtl;
+            text-align: center;
+            padding: 50px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        .links {
+            margin-top: 20px;
+        }
+        .link-box {
+            background: #fff;
+            padding: 10px;
+            margin: 5px auto;
+            width: 80%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .copy-btn {
+            margin-right: 10px;
+        }
+    </style>
 </head>
 <body>
+    <h1>מחולל קישורי משחק לייב - חוויה בקליק</h1>
+    <p>הכנס את מספר המשחק (Game ID):</p>
+    <input type="text" id="gameId" placeholder="למשל 1234" />
+    <button onclick="generateLinks()">צור קישורים</button>
+    <div class="links" id="linksContainer"></div>
 
-  <h1>🎮 מחולל קישורי משחק לייב - חוויה בקליק</h1>
+    <script>
+        const BASE_URL = "https://27180781.github.io/GAMELIVE2";
+        const TOKEN_URL = "https://agora-token-generator2.caprover.clicker.co.il/generate_token";
 
-  <label for="gameCode">הכנס את קוד המשחק:</label><br>
-  <input id="gameCode" placeholder="לדוג': 1234" /><br>
+        async function generateLinks() {
+            const gameId = document.getElementById('gameId').value;
+            if (!gameId) return alert("אנא הזן מספר משחק");
 
-  <label for="token">הכנס את האסימון (token):</label><br>
-  <input id="token" placeholder="הדבק כאן את ה-token" style="width:80%" /><br>
+            try {
+                const response = await fetch(TOKEN_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ channel_name: gameId, uid: 0 })
+                });
+                const data = await response.json();
+                if (!data.rtcToken) throw new Error("שגיאה בקבלת טוקן");
 
-  <button onclick="generateLinks()">צור קישורים</button>
+                const token = encodeURIComponent(data.rtcToken);
+                const official = `${BASE_URL}/official_host.html?game=${gameId}&token=${token}`;
+                const technical = `${BASE_URL}/technical_host.html?game=${gameId}&token=${token}`;
+                const player = `${BASE_URL}/player.html?game=${gameId}&token=${token}`;
 
-  <div class="links" id="linksContainer" style="display:none;">
-    <div class="link-box">
-      <b>🔗 קישור לשחקנים:</b>
-      <div><a id="playerLink" href="#" target="_blank"></a></div>
-      <button onclick="copyToClipboard('playerLink')">📋 העתק</button>
-    </div>
-    <div class="link-box">
-      <b>🎥 קישור למנחה רשמי:</b>
-      <div><a id="officialHostLink" href="#" target="_blank"></a></div>
-      <button onclick="copyToClipboard('officialHostLink')">📋 העתק</button>
-    </div>
-    <div class="link-box">
-      <b>💻 קישור למפעיל טכנולוגי:</b>
-      <div><a id="technicalHostLink" href="#" target="_blank"></a></div>
-      <button onclick="copyToClipboard('technicalHostLink')">📋 העתק</button>
-    </div>
-  </div>
-
-<script>
-function generateLinks() {
-  const code = document.getElementById("gameCode").value.trim();
-  const token = document.getElementById("token").value.trim();
-  if (!code || !token) {
-    alert("יש להזין גם קוד משחק וגם אסימון");
-    return;
-  }
-
-  const base = location.origin + '/GAMELIVE2';
-  const player = `${base}/player.html?code=${code}&token=${encodeURIComponent(token)}`;
-  const official = `${base}/official_host.html?channel=${code}&uid=1000&token=${encodeURIComponent(token)}`;
-  const tech = `${base}/technical_host.html?channel=${code}&uid=2000&official_uid=1000&token=${encodeURIComponent(token)}`;
-
-  document.getElementById("playerLink").href = player;
-  document.getElementById("playerLink").textContent = player;
-
-  document.getElementById("officialHostLink").href = official;
-  document.getElementById("officialHostLink").textContent = official;
-
-  document.getElementById("technicalHostLink").href = tech;
-  document.getElementById("technicalHostLink").textContent = tech;
-
-  document.getElementById("linksContainer").style.display = "block";
-}
-
-function copyToClipboard(elementId) {
-  const url = document.getElementById(elementId).href;
-  navigator.clipboard.writeText(url).then(() => {
-    alert("הקישור הועתק בהצלחה!");
-  });
-}
-</script>
-
+                document.getElementById('linksContainer').innerHTML = `
+                    <div class="link-box"><strong>שחקנים:</strong> <a href="${player}" target="_blank">${player}</a></div>
+                    <div class="link-box"><strong>מנחה:</strong> <a href="${official}" target="_blank">${official}</a></div>
+                    <div class="link-box"><strong>מפעיל טכני:</strong> <a href="${technical}" target="_blank">${technical}</a></div>
+                `;
+            } catch (err) {
+                alert("אירעה שגיאה ביצירת הקישורים: " + err.message);
+            }
+        }
+    </script>
 </body>
 </html>
