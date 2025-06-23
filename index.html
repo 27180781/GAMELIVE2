@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="he">
 <head>
@@ -28,9 +27,6 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
-        .copy-btn {
-            margin-right: 10px;
-        }
     </style>
 </head>
 <body>
@@ -45,19 +41,25 @@
         const TOKEN_URL = "https://agora-token-generator2.caprover.clicker.co.il/generate_token";
 
         async function generateLinks() {
-            const gameId = document.getElementById('gameId').value;
+            const gameId = document.getElementById('gameId').value.trim();
             if (!gameId) return alert("אנא הזן מספר משחק");
+
+            const channelName = `game_${gameId}`;  // חובה שיהיה תואם לקוד השידור
+            const uid = 12345;
 
             try {
                 const response = await fetch(TOKEN_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ channel_name: gameId, uid: 0 })
+                    body: JSON.stringify({ channel_name: channelName, uid: uid })
                 });
-                const data = await response.json();
-                if (!data.rtcToken) throw new Error("שגיאה בקבלת טוקן");
 
-                const token = encodeURIComponent(data.rtcToken);
+                if (!response.ok) throw new Error("השרת החזיר שגיאה");
+
+                const data = await response.json();
+                const token = encodeURIComponent(data.rtcToken || data.token);
+                if (!token) throw new Error("לא התקבל טוקן");
+
                 const official = `${BASE_URL}/official_host.html?game=${gameId}&token=${token}`;
                 const technical = `${BASE_URL}/technical_host.html?game=${gameId}&token=${token}`;
                 const player = `${BASE_URL}/player.html?game=${gameId}&token=${token}`;
