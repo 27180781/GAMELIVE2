@@ -1,37 +1,43 @@
-
 <!DOCTYPE html>
 <html lang="he">
 <head>
-    <meta charset="UTF-8">
-    <title>צפייה במשחק</title>
-    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.14.0.js"></script>
+  <meta charset="UTF-8" />
+  <title>צפייה במשחק</title>
+  <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.14.0.js"></script>
 </head>
 <body>
-    <h1>צפייה במשחק</h1>
-    <div id="video-container"></div>
-    <script src="config.js"></script>
-    <script>
-        const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
-        const localTracks = {}, remoteUsers = {};
+  <h1>צפייה במשחק</h1>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const gameId = urlParams.get('game');
+    const token = urlParams.get('token');
 
-        async function start() {
-            client.on("user-published", async (user, mediaType) => {
-                await client.subscribe(user, mediaType);
-                if (mediaType === "video") {
-                    const remoteVideo = document.createElement("div");
-                    remoteVideo.id = `remote-user-` + user.uid;
-                    remoteVideo.style.width = "640px";
-                    remoteVideo.style.height = "480px";
-                    document.getElementById("video-container").append(remoteVideo);
-                    user.videoTrack.play(remoteVideo);
-                }
-            });
+    if (!gameId || !token) {
+      alert("חסרים פרמטרים בקישור");
+      throw new Error("Missing game ID or token");
+    }
 
-            await client.join(AGORA_CONFIG.appId, AGORA_CONFIG.channel, AGORA_CONFIG.token, AGORA_CONFIG.uid);
-            console.log("שחקן joined channel:", AGORA_CONFIG.channel);
-        }
+    const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
 
-        start();
-    </script>
+    client.on("user-published", async (user, mediaType) => {
+      await client.subscribe(user, mediaType);
+      if (mediaType === "video") {
+        const remoteVideoTrack = user.videoTrack;
+        const playerContainer = document.createElement("div");
+        playerContainer.id = user.uid;
+        document.body.append(playerContainer);
+        remoteVideoTrack.play(playerContainer);
+      }
+      if (mediaType === "audio") {
+        user.audioTrack.play();
+      }
+    });
+
+    async function start() {
+      await client.join("517f71a5aa8a45a8a222341136c439c4", gameId, token, null);
+    }
+
+    start();
+  </script>
 </body>
 </html>
