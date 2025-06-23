@@ -1,3 +1,14 @@
-// config.js - הגדרות Agora
-const AGORA_APP_ID = "517f71a5aa8a45a8a222341136c439c4";
-const AGORA_TOKEN  = "006517f71a5aa8a45a8a222341136c439c4IABWl2sX25aDTwWBrKN8dY58MZ5QYMZPQStXO0smoLGypqPg45sXoye0IgAplkcBkWVaaAQAAQA5N1loAgA5N1loAwA5N1loBAA5N1lo";
+
+const urlParams = new URLSearchParams(window.location.search);
+const gameId = urlParams.get('game');
+const token = urlParams.get('token');
+if (!gameId || !token) {
+    alert("חסרים נתונים בקישור – ודא שקיבלת קישור תקין ממחולל הקישורים.");
+    throw new Error("Missing game or token");
+}
+const AGORA_CONFIG = {
+    appId: "517f71a5aa8a45a8a222341136c439c4",
+    channel: gameId,
+    token: token,
+    uid: null
+};
